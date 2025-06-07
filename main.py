@@ -20,7 +20,8 @@ branco = (255,255,255)
 preto = (0, 0 ,0 )
 rasta = pygame.image.load("assets/rasta.png")
 rasta = pygame.transform.scale(rasta, (280, 230))
-fundoStart = pygame.image.load("assets/fundoStart.jpg")
+fundoStart = pygame.image.load("assets/fundoStart.png")
+fundoStart = pygame.transform.scale(fundoStart, (1000, 700))
 fundoJogo = pygame.image.load("assets/fundoJogo.png")
 fundoJogo = pygame.transform.scale(fundoJogo, (1000, 700))
 fundoDead = pygame.image.load("assets/fundoDead.png")
@@ -73,7 +74,6 @@ def jogar():
     # Inicia o loop da interface gráfica
     root.mainloop()
     
-
     posicaoXPersona = 400
     posicaoYPersona = 300
     movimentoXPersona  = 0
@@ -91,24 +91,52 @@ def jogar():
     larguaMissel  = 80
     alturaMissel  = 250
     dificuldade  = 30
+
+    pausado = False
+
+
     while True:
         for evento in pygame.event.get():
             if evento.type == pygame.QUIT:
                 quit()
-            elif evento.type == pygame.KEYDOWN and evento.key == pygame.K_RIGHT:
-                movimentoXPersona = 15
-            elif evento.type == pygame.KEYDOWN and evento.key == pygame.K_LEFT:
-                movimentoXPersona = -15
-            elif evento.type == pygame.KEYUP and evento.key == pygame.K_RIGHT:
-                movimentoXPersona = 0
-            elif evento.type == pygame.KEYUP and evento.key == pygame.K_LEFT:
-                movimentoXPersona = 0
             elif evento.type == pygame.KEYDOWN:
-                if evento.key == pygame.K_SPACE and not pulando:
+                if evento.key == pygame.K_RIGHT:
+                    movimentoXPersona = 15
+                elif evento.key == pygame.K_LEFT:
+                    movimentoXPersona = -15
+                elif evento.key == pygame.K_SPACE and not pulando:
                     velocidadeVertical = -15
                     pulando = True
-                
-        posicaoXPersona = posicaoXPersona + movimentoXPersona     
+                elif evento.key == pygame.K_ESCAPE:
+                    pausado = not pausado
+            elif evento.type == pygame.KEYUP:
+                if evento.key in [pygame.K_RIGHT, pygame.K_LEFT]:
+                    movimentoXPersona = 0
+
+        posicaoXPersona = posicaoXPersona + movimentoXPersona
+
+        if pausado:
+            tela.fill(branco)
+            tela.blit(fundoJogo, (0,0))
+            tela.blit(rasta, (posicaoXPersona, posicaoYPersona))
+            tela.blit(missel, (posicaoXMissel, posicaoYMissel))
+            texto = fonteMenu.render("Pontos: "+str(pontos), True, branco)
+            tela.blit(texto, (15,15))
+
+            overlay = pygame.Surface(tamanho)
+            overlay.set_alpha(180) 
+            overlay.fill((0, 0, 0))
+            tela.blit(overlay, (0, 0))
+
+            fontePause = pygame.font.SysFont("arial", 50, bold=True)
+            texto_pausa = fontePause.render("JOGO PAUSADO", True, (255, 255, 255))
+            texto_instrucao = fonteMenu.render("Aperte ESC para continuar", True, (200, 200, 200))
+            tela.blit(texto_pausa, (tamanho[0] // 2 - texto_pausa.get_width() // 2, 250))
+            tela.blit(texto_instrucao, (tamanho[0] // 2 - texto_instrucao.get_width() // 2, 320))
+
+            pygame.display.update()
+            relogio.tick(15)
+            continue     
 
         velocidadeVertical += gravidade
         posicaoYPersona += velocidadeVertical
