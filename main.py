@@ -5,6 +5,7 @@ import tkinter as tk
 from tkinter import messagebox
 from recursos.funcoes import inicializarBancoDeDados
 from recursos.funcoes import escreverDados
+from recursos.desenharMapa import desenharMapa, gerarMapa, verificarColisaoComBlocos
 import json
 print("Inicializando o Jogo! Criado por Eduardo PH")
 print("Aperte Enter para iniciar o jogo")
@@ -19,12 +20,15 @@ pygame.display.set_icon(icone)
 branco = (255,255,255)
 preto = (0, 0 ,0 )
 rasta = pygame.image.load("assets/rasta.png")
-rasta = pygame.transform.scale(rasta, (280, 230))
+rasta = pygame.transform.scale(rasta, (120, 150))
 fundoStart = pygame.image.load("assets/fundoStart.png")
 fundoStart = pygame.transform.scale(fundoStart, (1000, 700))
 fundoJogo = pygame.image.load("assets/fundoJogo.png")
 fundoJogo = pygame.transform.scale(fundoJogo, (1000, 700))
 fundoDead = pygame.image.load("assets/fundoDead.png")
+blocoChao = pygame.image.load("assets/bloco_chao.png")
+blocoChao = pygame.transform.scale(blocoChao, (100, 100))
+mapa = gerarMapa(50, 0.05)
 missel = pygame.image.load("assets/missile.png")
 missileSound = pygame.mixer.Sound("assets/missile.wav")
 explosaoSound = pygame.mixer.Sound("assets/explosao.wav")
@@ -39,9 +43,11 @@ def jogar():
     posicaoYPersona = 300
     movimentoXPersona = 0
     movimentoYPersona = 0
+    cameraX = 0
     velocidadeVertical = 0
     gravidade = 0.8
     pulando = False
+    yChao = 620
 
     def obter_nome():
         global nome
@@ -57,9 +63,9 @@ def jogar():
     # Obter as dimensões da tela
     larguraTela = root.winfo_screenwidth()
     alturaTela = root.winfo_screenheight()
-    pos_x = (larguraTela - larguraJanela) // 2
-    pos_y = (alturaTela - alturaJanela) // 2
-    root.geometry(f"{larguraJanela}x{alturaJanela}+{pos_x}+{pos_y}")
+    posX = (larguraTela - larguraJanela) // 2
+    posY = (alturaTela - alturaJanela) // 2
+    root.geometry(f"{larguraJanela}x{alturaJanela}+{posX}+{posY}")
     root.title("Informe seu nickname")
     root.protocol("WM_DELETE_WINDOW", obter_nome)
 
@@ -84,16 +90,15 @@ def jogar():
     pygame.mixer.Sound.play(missileSound)
     pygame.mixer.music.play(-1)
     pontos = 0
-    larguraPersona = 180
-    alturaPersona = 230
-    larguraHitbox = 0
-    alturaHitbox = 0
-    larguaMissel  = 80
+    larguraPersona = 120
+    alturaPersona = 150
+    larguraHitbox = larguraPersona
+    alturaHitbox = alturaPersona
+    larguraMissel  = 80
     alturaMissel  = 250
     dificuldade  = 30
 
     pausado = False
-
 
     while True:
         for evento in pygame.event.get():
@@ -114,12 +119,16 @@ def jogar():
                     movimentoXPersona = 0
 
         posicaoXPersona = posicaoXPersona + movimentoXPersona
+        cameraX = posicaoXPersona - tamanho[0] // 2
+        if cameraX < 0:
+            cameraX = 0
 
         if pausado:
             tela.fill(branco)
-            tela.blit(fundoJogo, (0,0))
-            tela.blit(rasta, (posicaoXPersona, posicaoYPersona))
-            tela.blit(missel, (posicaoXMissel, posicaoYMissel))
+            tela.blit(fundoJogo, (0,0) )
+            tela.blit(rasta, (posicaoXPersona - cameraX, posicaoYPersona))
+            tela.blit(missel, (posicaoXMissel - cameraX, posicaoYMissel))
+            desenharMapa(tela, mapa, blocoChao, 650, cameraX)
             texto = fonteMenu.render("Pontos: "+str(pontos), True, branco)
             tela.blit(texto, (15,15))
 
@@ -141,53 +150,47 @@ def jogar():
         velocidadeVertical += gravidade
         posicaoYPersona += velocidadeVertical
        
-        if posicaoYPersona >= 463:  
-            posicaoYPersona = 463
-            pulando = False
-            velocidadeVertical = 0
-
         margemLateral = (larguraPersona - larguraHitbox) // 2
 
         if posicaoXPersona < -margemLateral:
             posicaoXPersona = -margemLateral
-        elif posicaoXPersona + larguraPersona > tamanho[0] + margemLateral:
-            posicaoXPersona = tamanho[0] - larguraPersona + margemLateral
-
         
         tela.fill(branco)
         tela.blit(fundoJogo, (0,0) )
-        
-        tela.blit( rasta, (posicaoXPersona, posicaoYPersona) )
+        desenharMapa(tela, mapa, blocoChao, yChao, cameraX)
+        tela.blit(rasta, (posicaoXPersona - cameraX, posicaoYPersona))
         
         posicaoYMissel = posicaoYMissel + velocidadeMissel
+
         if posicaoYMissel > 600:
             posicaoYMissel = -240
             pontos = pontos + 1
             velocidadeMissel = velocidadeMissel + 1
-            posicaoXMissel = random.randint(0,800)
+            posicaoXMissel = random.randint(cameraX, cameraX + tamanho[0])
             pygame.mixer.Sound.play(missileSound)
             
-            
-        tela.blit( missel, (posicaoXMissel, posicaoYMissel) )
+        tela.blit(missel, (posicaoXMissel - cameraX, posicaoYMissel))
+
         
         texto = fonteMenu.render("Pontos: "+str(pontos), True, branco)
         tela.blit(texto, (15,15))
         
-        larguraPersona = 280
-        alturaPersona = 230
-
-        larguraHitbox = 90
-        alturaHitbox = 230
-
         rect_persona = pygame.Rect(
-            posicaoXPersona + (larguraPersona - larguraHitbox) // 2,
-            posicaoYPersona + (alturaPersona - alturaHitbox) // 2,
-            larguraHitbox,
-            alturaHitbox
-        )
+        posicaoXPersona - cameraX,
+        posicaoYPersona,
+        larguraHitbox,
+        alturaHitbox
+    )
 
+        if velocidadeVertical >= 0:
+            blocoColidido = verificarColisaoComBlocos(mapa, blocoChao, rect_persona, yChao, cameraX)
+            if blocoColidido:
+                posicaoYPersona = blocoColidido.top - alturaPersona
+                velocidadeVertical = 0
+                pulando = False
+                posicaoYPersona = blocoColidido.top - alturaPersona + 1 
 
-        rect_missel = pygame.Rect(posicaoXMissel, posicaoYMissel, larguaMissel, alturaMissel)
+        rect_missel = pygame.Rect(posicaoXMissel - cameraX, posicaoYMissel, larguraMissel, alturaMissel)
 
         if rect_persona.colliderect(rect_missel):
             escreverDados(nome, pontos)
@@ -196,12 +199,22 @@ def jogar():
         else:
             print("Ainda Vivo")
         
-        pygame.draw.rect(tela, (255, 0, 0), rect_persona, 2) 
-        pygame.draw.rect(tela, (0, 255, 0), rect_missel, 2)
+        pygame.draw.rect(tela, (255, 0, 0), rect_persona, 2)
+
+        pygame.draw.rect(tela, (0, 255, 0), pygame.Rect(
+        rect_missel.x - cameraX, rect_missel.y, rect_missel.width, rect_missel.height), 2)
+
+        # Gera novos blocos se o jogador estiver próximo do fim do mapa
+        comprimentoMapaAtual = len(mapa)
+        blocosVisiveis = tamanho[0] // 100 + 5  # Quantos blocos aparecem na tela
+        ultimoBlocoVisivel = (cameraX // 100) + blocosVisiveis
+
+        if ultimoBlocoVisivel >= comprimentoMapaAtual:
+            novosBlocos = gerarMapa(10, 0.05)
+            mapa.extend(novosBlocos)
 
         pygame.display.update()
         relogio.tick(60)
-
 
 def start():
     larguraButtonStart = 150
@@ -236,8 +249,6 @@ def start():
                     alturaButtonQuit  = 40
                     quit()
                     
-            
-            
         tela.fill(branco)
         tela.blit(fundoStart, (0,0) )
 
@@ -319,7 +330,7 @@ def dead():
         quitTexto = fonteMenu.render("Sair do Game", True, preto)
         tela.blit(quitTexto, (25,62))
 
-
+    
         pygame.display.update()
         relogio.tick(60)
 
