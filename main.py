@@ -149,6 +149,11 @@ def jogar():
 
         velocidadeVertical += gravidade
         posicaoYPersona += velocidadeVertical
+
+        if posicaoYPersona > 800:
+            escreverDados(nome, pontos)
+            dead()
+
        
         margemLateral = (larguraPersona - larguraHitbox) // 2
 
@@ -183,12 +188,12 @@ def jogar():
     )
 
         if velocidadeVertical >= 0:
-            blocoColidido = verificarColisaoComBlocos(mapa, blocoChao, rect_persona, yChao, cameraX)
-            if blocoColidido:
-                posicaoYPersona = blocoColidido.top - alturaPersona
-                velocidadeVertical = 0
+            resultado_colisao = verificarColisaoComBlocos(mapa, blocoChao, rect_persona, yChao, cameraX, velocidadeVertical)
+
+            if resultado_colisao:
+                posicaoYPersona = resultado_colisao["rect"].top - alturaPersona
+                velocidadeVertical = 1
                 pulando = False
-                posicaoYPersona = blocoColidido.top - alturaPersona + 1 
 
         rect_missel = pygame.Rect(posicaoXMissel - cameraX, posicaoYMissel, larguraMissel, alturaMissel)
 
@@ -204,9 +209,8 @@ def jogar():
         pygame.draw.rect(tela, (0, 255, 0), pygame.Rect(
         rect_missel.x - cameraX, rect_missel.y, rect_missel.width, rect_missel.height), 2)
 
-        # Gera novos blocos se o jogador estiver próximo do fim do mapa
         comprimentoMapaAtual = len(mapa)
-        blocosVisiveis = tamanho[0] // 100 + 5  # Quantos blocos aparecem na tela
+        blocosVisiveis = tamanho[0] // 100 + 5  
         ultimoBlocoVisivel = (cameraX // 100) + blocosVisiveis
 
         if ultimoBlocoVisivel >= comprimentoMapaAtual:
