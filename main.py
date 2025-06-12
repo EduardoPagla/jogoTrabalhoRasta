@@ -1,6 +1,6 @@
 import pygame
 import random
-import os
+import os, math
 import tkinter as tk
 from tkinter import messagebox
 from recursos.funcoes import inicializarBancoDeDados
@@ -28,6 +28,7 @@ fundoStart = pygame.transform.scale(fundoStart, (1000, 700))
 fundoJogo = pygame.image.load("assets/fundoJogo.png")
 fundoJogo = pygame.transform.scale(fundoJogo, (1000, 700))
 fundoDead = pygame.image.load("assets/fundoDead.png")
+fundoDead = pygame.transform.scale(fundoDead, (1000, 700))
 blocoChao = pygame.image.load("assets/bloco_chao.png")
 blocoChao = pygame.transform.scale(blocoChao, (100, 100))
 mapa = gerarMapa(50, 0.05)
@@ -35,7 +36,7 @@ gelo = pygame.image.load("assets/pedra.png")
 gelo = pygame.transform.scale(gelo, (120, 120))
 brava = pygame.image.load("assets/brava.png")
 brava = pygame.transform.scale(brava, (60, 60))
-missileSound = pygame.mixer.Sound("assets/missile.wav")
+PedraSound = pygame.mixer.Sound("assets/Efeito.mp3")
 PedraSound = pygame.mixer.Sound("assets/pedra.mp3")
 fonteMenu = pygame.font.SysFont("comicsans",18)
 fonteMorte = pygame.font.SysFont("arial",120)
@@ -55,6 +56,12 @@ def jogar():
     yChao = 620
     ultimo_spawn_brava = 0  
     intervalo_spawn_brava = 2000 
+    luaPos = (50 - cameraX//20, 50)
+    luaRaioBase = 25 
+    luaRaio = luaRaioBase 
+    luaPulsando = True  
+    luaCor = (150, 150, 150)
+    LuaVelocidade = 0.5
 
     def obter_nome():
         global nome
@@ -84,8 +91,8 @@ def jogar():
     botao = tk.Button(root, text="Enviar", command=obter_nome)
     botao.pack()
 
-    # Inicia o loop da interface gráfica
     root.mainloop()
+    mostrarTelaBoasVindas(nome)
     
     posicaoXPersona = 400
     posicaoYPersona = 300
@@ -97,7 +104,7 @@ def jogar():
     posicaoXPedraH = tamanho[0] + 200 
     posicaoYPedraH = random.randint(0, 200)
     velocidadePedraH = 3
-    pygame.mixer.Sound.play(missileSound)
+    pygame.mixer.Sound.play(PedraSound)
     pygame.mixer.music.play(-1)
     pontos = 0
     larguraPersona = 120
@@ -141,7 +148,7 @@ def jogar():
             tela.blit(rasta, (posicaoXPersona - cameraX, posicaoYPersona))
             tela.blit(gelo, (posicaoXGelo - cameraX, posicaoYGelo))
             desenharMapa(tela, mapa, blocoChao, 650, cameraX)
-            texto = fonteMenu.render("Pontos: "+str(pontos), True, branco)
+            texto = fonteMenu.render("Pontos: " +str(pontos), True, branco)
             tela.blit(texto, (15,15))
 
             overlay = pygame.Surface(tamanho)
@@ -167,7 +174,18 @@ def jogar():
             mostrarMensagemMorte(tela, tamanho)
             dead()
 
-       
+        if luaPulsando:
+            luaRaio += LuaVelocidade
+            if luaRaio >= luaRaioBase + 5:
+                luaPulsando = False
+        else:
+            luaRaio -= LuaVelocidade
+            if luaRaio <= luaRaioBase - 5:
+                luaPulsando = True
+
+        pygame.draw.circle(tela, luaCor, luaPos, int(luaRaio))
+        pygame.draw.circle(tela, (200, 200, 200), luaPos, int(luaRaio - 5))
+
         margemLateral = (larguraPersona - larguraHitbox) // 2
 
         if posicaoXPersona < -margemLateral:
@@ -185,7 +203,7 @@ def jogar():
             pontos = pontos + 1
             velocidadeGelo = velocidadeGelo + 1
             posicaoXGelo = random.randint(cameraX, cameraX + tamanho[0])
-            pygame.mixer.Sound.play(missileSound)
+            pygame.mixer.Sound.play(PedraSound)
             
         tela.blit(gelo, (posicaoXGelo - cameraX, posicaoYGelo))
 
@@ -243,9 +261,61 @@ def jogar():
             novosBlocos = gerarMapa(10, 0.05)
             mapa.extend(novosBlocos)
 
-        pygame.draw.rect(tela, (0, 0, 255), rect_pedraH, 2)  # Azul
+        pygame.display.update()
+        relogio.tick(60)
 
-
+def mostrarTelaBoasVindas(nome_jogador):
+    larguraButtonStart = 200
+    alturaButtonStart = 50
+    fonteGrande = pygame.font.SysFont("comicsans", 40)
+    fonteMedia = pygame.font.SysFont("comicsans", 24)
+    
+    while True:
+        for evento in pygame.event.get():
+            if evento.type == pygame.QUIT:
+                quit()
+            elif evento.type == pygame.MOUSEBUTTONDOWN:
+                if startButton.collidepoint(evento.pos):
+                    larguraButtonStart = 190
+                    alturaButtonStart = 45
+            elif evento.type == pygame.MOUSEBUTTONUP:
+                if startButton.collidepoint(evento.pos):
+                    larguraButtonStart = 200
+                    alturaButtonStart = 50
+                    return  
+                    
+        tela.fill(branco)
+        tela.blit(fundoStart, (0,0))
+        
+        overlay = pygame.Surface(tamanho)
+        overlay.set_alpha(180)
+        overlay.fill((0, 0, 0))
+        tela.blit(overlay, (0, 0))
+        
+        boas_vindas = fonteGrande.render(f"Bem-vindo, {nome_jogador}!", True, branco)
+        tela.blit(boas_vindas, (tamanho[0]//2 - boas_vindas.get_width()//2, 150))
+        
+        # Instruções do jogo
+        instrucoes = [
+            "Instruções do Jogo:",
+            "- Use as setas < > para se mover",
+            "- Pressione ESPAÇO para pular",
+            "- Desvie dos blocos de gelo que caem",
+            "- Evite as pedras que vêm na sua direção",
+            "- Quanto mais tempo sobreviver, mais pontos ganha!"
+        ]
+        
+        for i, linha in enumerate(instrucoes):
+            texto_linha = fonteMedia.render(linha, True, branco)
+            tela.blit(texto_linha, (tamanho[0]//2 - texto_linha.get_width()//2, 220 + i*30))
+        
+        startButton = pygame.draw.rect(tela, branco, 
+                                     (tamanho[0]//2 - larguraButtonStart//2, 450, 
+                                      larguraButtonStart, alturaButtonStart), 
+                                     border_radius=15)
+        startTexto = fonteMedia.render("Começar Jogo", True, preto)
+        tela.blit(startTexto, (tamanho[0]//2 - startTexto.get_width()//2, 460))
+        
         pygame.display.update()
         relogio.tick(60)
 
@@ -366,7 +436,6 @@ def dead():
     
         pygame.display.update()
         relogio.tick(60)
-
 
 start()
 
