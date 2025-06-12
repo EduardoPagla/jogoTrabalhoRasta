@@ -4,13 +4,15 @@ import os
 import tkinter as tk
 from tkinter import messagebox
 from recursos.funcoes import inicializarBancoDeDados
-from recursos.funcoes import escreverDados
+from recursos.funcoes import escreverDados, mostrarMensagemMorte
 from recursos.desenharMapa import desenharMapa, gerarMapa, verificarColisaoComBlocos
 import json
+ 
 print("Inicializando o Jogo! Criado por Eduardo PH")
 print("Aperte Enter para iniciar o jogo")
 pygame.init()
 inicializarBancoDeDados()
+
 tamanho = (1000,700)
 relogio = pygame.time.Clock()
 tela = pygame.display.set_mode( tamanho ) 
@@ -29,12 +31,15 @@ fundoDead = pygame.image.load("assets/fundoDead.png")
 blocoChao = pygame.image.load("assets/bloco_chao.png")
 blocoChao = pygame.transform.scale(blocoChao, (100, 100))
 mapa = gerarMapa(50, 0.05)
-missel = pygame.image.load("assets/missile.png")
+gelo = pygame.image.load("assets/pedra.png")
+gelo = pygame.transform.scale(gelo, (120, 120))
+brava = pygame.image.load("assets/brava.png")
+brava = pygame.transform.scale(brava, (60, 60))
 missileSound = pygame.mixer.Sound("assets/missile.wav")
-explosaoSound = pygame.mixer.Sound("assets/explosao.wav")
+PedraSound = pygame.mixer.Sound("assets/pedra.mp3")
 fonteMenu = pygame.font.SysFont("comicsans",18)
 fonteMorte = pygame.font.SysFont("arial",120)
-pygame.mixer.music.load("assets/ironsound.mp3")
+pygame.mixer.music.load("assets/CleitonRasta.mp3")
 
 def jogar():
     larguraJanela = 300
@@ -48,6 +53,8 @@ def jogar():
     gravidade = 0.8
     pulando = False
     yChao = 620
+    ultimo_spawn_brava = 0  
+    intervalo_spawn_brava = 2000 
 
     def obter_nome():
         global nome
@@ -84,9 +91,12 @@ def jogar():
     posicaoYPersona = 300
     movimentoXPersona  = 0
     movimentoYPersona  = 0
-    posicaoXMissel = 400
-    posicaoYMissel = -240
-    velocidadeMissel = 1
+    posicaoXGelo = 400
+    posicaoYGelo = -240
+    velocidadeGelo = 1
+    posicaoXPedraH = tamanho[0] + 200 
+    posicaoYPedraH = random.randint(0, 200)
+    velocidadePedraH = 3
     pygame.mixer.Sound.play(missileSound)
     pygame.mixer.music.play(-1)
     pontos = 0
@@ -94,8 +104,10 @@ def jogar():
     alturaPersona = 150
     larguraHitbox = larguraPersona
     alturaHitbox = alturaPersona
-    larguraMissel  = 80
-    alturaMissel  = 250
+    larguraGelo  = 120
+    alturaGelo  = 120
+    larguraBrava = 60
+    alturaBrava = 60
     dificuldade  = 30
 
     pausado = False
@@ -127,7 +139,7 @@ def jogar():
             tela.fill(branco)
             tela.blit(fundoJogo, (0,0) )
             tela.blit(rasta, (posicaoXPersona - cameraX, posicaoYPersona))
-            tela.blit(missel, (posicaoXMissel - cameraX, posicaoYMissel))
+            tela.blit(gelo, (posicaoXGelo - cameraX, posicaoYGelo))
             desenharMapa(tela, mapa, blocoChao, 650, cameraX)
             texto = fonteMenu.render("Pontos: "+str(pontos), True, branco)
             tela.blit(texto, (15,15))
@@ -152,6 +164,7 @@ def jogar():
 
         if posicaoYPersona > 800:
             escreverDados(nome, pontos)
+            mostrarMensagemMorte(tela, tamanho)
             dead()
 
        
@@ -165,18 +178,27 @@ def jogar():
         desenharMapa(tela, mapa, blocoChao, yChao, cameraX)
         tela.blit(rasta, (posicaoXPersona - cameraX, posicaoYPersona))
         
-        posicaoYMissel = posicaoYMissel + velocidadeMissel
+        posicaoYGelo = posicaoYGelo + velocidadeGelo
 
-        if posicaoYMissel > 600:
-            posicaoYMissel = -240
+        if posicaoYGelo > 600:
+            posicaoYGelo = -240
             pontos = pontos + 1
-            velocidadeMissel = velocidadeMissel + 1
-            posicaoXMissel = random.randint(cameraX, cameraX + tamanho[0])
+            velocidadeGelo = velocidadeGelo + 1
+            posicaoXGelo = random.randint(cameraX, cameraX + tamanho[0])
             pygame.mixer.Sound.play(missileSound)
             
-        tela.blit(missel, (posicaoXMissel - cameraX, posicaoYMissel))
+        tela.blit(gelo, (posicaoXGelo - cameraX, posicaoYGelo))
 
-        
+        posicaoYPedraH = yChao - 80
+
+        tempo_atual = pygame.time.get_ticks()
+        if posicaoXPedraH < cameraX - 200 and tempo_atual - ultimo_spawn_brava > intervalo_spawn_brava:
+            posicaoXPedraH = cameraX + tamanho[0] + 100
+            posicaoYPedraH = random.randint(yChao - 200, yChao - alturaGelo)
+            ultimo_spawn_brava = tempo_atual
+                
+        tela.blit(brava, (posicaoXPedraH - cameraX, posicaoYPedraH))
+
         texto = fonteMenu.render("Pontos: "+str(pontos), True, branco)
         tela.blit(texto, (15,15))
         
@@ -195,27 +217,34 @@ def jogar():
                 velocidadeVertical = 1
                 pulando = False
 
-        rect_missel = pygame.Rect(posicaoXMissel - cameraX, posicaoYMissel, larguraMissel, alturaMissel)
+        rect_gelo = pygame.Rect(posicaoXGelo - cameraX, posicaoYGelo, larguraGelo, alturaGelo)
 
-        if rect_persona.colliderect(rect_missel):
+        if rect_persona.colliderect(rect_gelo):
             escreverDados(nome, pontos)
+            mostrarMensagemMorte(tela, tamanho)
             dead()
 
         else:
             print("Ainda Vivo")
-        
-        pygame.draw.rect(tela, (255, 0, 0), rect_persona, 2)
-
-        pygame.draw.rect(tela, (0, 255, 0), pygame.Rect(
-        rect_missel.x - cameraX, rect_missel.y, rect_missel.width, rect_missel.height), 2)
 
         comprimentoMapaAtual = len(mapa)
         blocosVisiveis = tamanho[0] // 100 + 5  
         ultimoBlocoVisivel = (cameraX // 100) + blocosVisiveis
 
+        posicaoXPedraH -= velocidadePedraH
+        rect_pedraH = pygame.Rect(posicaoXPedraH - cameraX, posicaoYPedraH, larguraBrava, alturaBrava)
+
+        if rect_persona.colliderect(rect_pedraH):
+            escreverDados(nome, pontos)
+            mostrarMensagemMorte(tela, tamanho)
+            dead()
+
         if ultimoBlocoVisivel >= comprimentoMapaAtual:
             novosBlocos = gerarMapa(10, 0.05)
             mapa.extend(novosBlocos)
+
+        pygame.draw.rect(tela, (0, 0, 255), rect_pedraH, 2)  # Azul
+
 
         pygame.display.update()
         relogio.tick(60)
@@ -270,7 +299,7 @@ def start():
 
 def dead():
     pygame.mixer.music.stop()
-    pygame.mixer.Sound.play(explosaoSound)
+    pygame.mixer.Sound.play(PedraSound)
     larguraButtonStart = 150
     alturaButtonStart  = 40
     larguraButtonQuit = 150

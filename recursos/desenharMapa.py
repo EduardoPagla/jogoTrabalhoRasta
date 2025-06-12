@@ -3,30 +3,30 @@ import pygame, random
 blocoChao = pygame.image.load("assets/bloco_chao.png")
 blocoChao = pygame.transform.scale(blocoChao, (100, 100))
 
-def gerarMapa(tamanho, probBuraco=0.1, larguraBuracoMax=3, probPlataforma=0.15):
+def gerarMapa(tamanho, probBuraco=0.1, probPlataforma=0.15):
     mapa = []
     i = 0
 
     while i < tamanho:
-        if random.random() < probBuraco:
-            larguraBuraco = random.randint(1, larguraBuracoMax)
+        # Tenta gerar buraco
+        if random.random() < probBuraco and i + 2 <= tamanho:
+            larguraBuraco = random.randint(2, 3)
+            larguraBuraco = min(larguraBuraco, tamanho - i)  # evita passar do limite
             for _ in range(larguraBuraco):
-                if i < tamanho:
-                    mapa.append({"chao": 0, "plataforma": 0})
-                    i += 1
-        else:
-            bloco = {"chao": 1, "plataforma": 0}
+                mapa.append({"chao": 0, "plataforma": 0})
+                i += 1
 
+        else:
+            # Tenta gerar plataforma
             if random.random() < probPlataforma:
                 larguraPlataforma = random.randint(2, 4)
-                altura = random.randint(1, 2)  # Altura mais próxima do chão
+                altura = random.randint(1, 2)
                 for j in range(larguraPlataforma):
-                    if i + j < tamanho:
+                    if i < tamanho:
                         mapa.append({"chao": 1, "plataforma": altura})
-                i += larguraPlataforma
-                continue
+                        i += 1
             else:
-                mapa.append(bloco)
+                mapa.append({"chao": 1, "plataforma": 0})
                 i += 1
 
     return mapa
@@ -36,14 +36,12 @@ def desenharMapa(tela, mapa, blocoChao, yChao, cameraX):
     for i, bloco in enumerate(mapa):
         x = i * blocoChao.get_width()
 
-        # Desenha o chão
         if bloco["chao"] == 1:
             tela.blit(blocoChao, (x - cameraX, yChao))
 
-        # Desenha a plataforma (altura 1 = mais próxima do chão, altura 3 = mais alta)
         if bloco["plataforma"] > 0:
             altura = bloco["plataforma"]
-            yPlataforma = yChao - altura * 150  # Ajuste esse valor para controlar altura real
+            yPlataforma = yChao - altura * 150 
             tela.blit(blocoChao, (x - cameraX, yPlataforma))
 
 
